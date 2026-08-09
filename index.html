@@ -511,6 +511,14 @@ function ttRebuildMap(){
   dnwLayers.length=0; dnwLabelLayers.length=0;
   dnw.forEach((_,i)=>ensureDNWLayer(i)); refreshAllDNWLabels();
   houseLayer.clearLayers(); if(housesVisible)loadHouses();
+  // Each territory gets its own map view. Blank territories stay at the
+  // normal map location until their first boundary is created.
+  if(Array.isArray(territory) && territory.length>=2){
+    try{
+      const b=L.latLngBounds(territory.map(p=>[p.lat,p.lng]));
+      if(b.isValid()) map.fitBounds(b,{padding:[28,28],maxZoom:17});
+    }catch(e){}
+  }
 }
 function ttRenderManager(){
   const list=$('tmList'); list.innerHTML='';
@@ -527,7 +535,11 @@ function ttRenderManager(){
       open.disabled=!t.archived && t.id===currentTerritoryId;
       open.style.minWidth='72px';
       open.onclick=()=>{ if(t.archived){ t.archived=false; ttSaveRegistry(); ttRenderManager(); } else ttSwitch(t.id); };
-      row.append(name,meta,open);list.appendChild(row);
+      const del=document.createElement('button');
+      del.textContent='Delete';
+      del.style.cssText='min-width:68px;background:#b42318;color:#fff;border:0;border-radius:7px;padding:7px 9px;font-weight:700';
+      del.onclick=()=>ttDelete(t.id);
+      row.append(name,meta,open,del);list.appendChild(row);
     });
   }
   group('ACTIVE TERRITORIES',active); group('ARCHIVED',archived);
@@ -553,6 +565,26 @@ function ttRename(){
   const t=ttCurrent(); if(!t)return;
   const name=(prompt('New territory name:',t.name)||'').trim(); if(!name)return;
   t.name=name; ttSaveCurrent(); $('currentTerritoryName').textContent=name; ttRenderManager();
+}
+function ttDelete(id){
+  const t=territoryRegistry.find(x=>x.id===id); if(!t)return;
+  if(territoryRegistry.length<=1){
+    alert('You must keep at least one territory.');
+    return;
+  }
+  if(!confirm('Delete "'+t.name+'"? This cannot be undone.'))return;
+  const wasCurrent=(t.id===currentTerritoryId);
+  territoryRegistry=territoryRegistry.filter(x=>x.id!==id);
+  if(wasCurrent){
+    const next=territoryRegistry.find(x=>!x.archived)||territoryRegistry[0];
+    currentTerritoryId=next.id;
+    localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
+    ttLoadRecord(next);
+    ttRebuildMap();
+    banner('TERRITORY: '+next.name); setTimeout(()=>banner(''),1600);
+  }
+  ttSaveRegistry();
+  ttRenderManager();
 }
 function ttArchive(){
   const t=ttCurrent(); if(!t)return;
