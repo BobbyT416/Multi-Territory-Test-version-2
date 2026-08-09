@@ -242,6 +242,10 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 <section id="editor">
 <div class="sheetTitle" id="editorTitle">Edit Territory</div>
 <div class="small" id="editorHelp">EDITING ORDER: 1) Add Point at each intersection. 2) Follow Road. 3) Tap two blue points in order. 4) Review the blue road preview. 5) Tap Add Road Segment.</div>
+<div id="territoryNameEditor" style="display:none;margin-top:6px;display:flex;gap:6px;align-items:end">
+  <div style="flex:1"><label class="small" for="territoryNameInput">Territory name</label><input id="territoryNameInput" type="text" style="width:100%;padding:7px;border:1px solid #ccc;border-radius:8px" placeholder="Territory name"></div>
+  <button id="saveTerritoryName" style="white-space:nowrap">Save Name</button>
+</div>
 <div id="dnwChooser" style="display:none;margin-top:8px">
 <div class="small" style="margin-bottom:6px">Choose which Do Not Work area you want to edit.</div><label class="small" for="dnwSelect">Area to edit</label>
 <select id="dnwSelect" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:9px"></select><label class="small" for="dnwName" style="display:block;margin-top:7px">Area name</label>
@@ -439,6 +443,18 @@ let handles=[], selectedPointIndices=[], roadPreview=null, pendingRoad=null, ori
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 
 const $=id=>document.getElementById(id);
+
+$('saveTerritoryName').addEventListener('click',()=>{
+  if(editorTarget!=='territory')return;
+  const name=$('territoryNameInput').value.trim();
+  if(!name){banner('Enter a territory name first');return}
+  const t=ttCurrent&&ttCurrent();
+  if(!t){banner('No current territory');return}
+  t.name=name;
+  $('currentTerritoryName').textContent=name;
+  ttSaveRegistry();
+  banner('TERRITORY RENAMED: '+name);
+});
 
 // ---------------- Multi-territory foundation ----------------
 // This is built around the working v33 editor. The existing editor handlers
@@ -898,6 +914,7 @@ function closeEditor(save){
   editMode=false; addMode=false; addingDNW=false; activeDNWIndex=null; original=null;
   $('editor').classList.remove('show');document.body.classList.remove('editor-open');
   $('dnwChooser').style.display='none';
+  if($('territoryNameEditor'))$('territoryNameEditor').style.display='none';
   dnwLayers.forEach(layer=>{
     if(layer)layer.setStyle({color:'#b8860b',weight:2,fillColor:'#ffd54f',fillOpacity:.48});
   });
@@ -913,6 +930,9 @@ $('editTerritory').addEventListener('click',()=>{
   $('editor').classList.add('show');document.body.classList.add('editor-open');
   $('dnwChooser').style.display='none';
   $('editorTitle').textContent='Edit Territory';
+  $('territoryNameEditor').style.display='flex';
+  const current=ttCurrent&&ttCurrent();
+  $('territoryNameInput').value=current&&current.name ? current.name : ($('currentTerritoryName').textContent||'');
   $('followRoad').classList.remove('active');
   if(!Array.isArray(territory)||territory.length===0){
     addMode=true;
@@ -944,6 +964,7 @@ function setActiveDNW(idx){
 }
 
 $('editDNW').addEventListener('click',()=>{
+  if($('territoryNameEditor'))$('territoryNameEditor').style.display='none';
   original=JSON.parse(JSON.stringify({territory,dnw}));
   $('editor').classList.add('show');document.body.classList.add('editor-open');
   if(!dnw.length){ beginAddDNW(); return; }
