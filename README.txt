@@ -1,15 +1,11 @@
-Territory Tracker Sync Test v33
+Territory Tracker v38
 
-Based on working Sync Test v32.
-
-Changes:
-- Cloud Save now includes house statuses and notes (house_records).
-- Cloud Load restores house statuses and notes.
-- Export Map Data also includes house_records.
-- Existing Supabase session is restored automatically; login fields are hidden when already signed in.
-- Sign-in session remains persistent on the device using Supabase Auth.
-- Existing territory, Do Not Work, houses, Remaining, editing, Follow Road, and Territory Card logic is unchanged.
-
-Database prerequisite:
-Run:
-ALTER TABLE public.territory_data ADD COLUMN IF NOT EXISTS house_records jsonb NOT NULL DEFAULT '{}'::jsonb;
+Editor/UI fixes based on testing:
+- Removed redundant Freehand mode; blue points can always be dragged while editing.
+- Add Point and Follow Road are the only persistent editing modes and turn blue when active.
+- Delete Selected and Delete Last give temporary blue press feedback.
+- Reset Changes in Edit Territory restores the boundary to the state it had when editing began.
+- Reset This Area in Do Not Work editing clears that area for rebuilding.
+- Follow Road uses the simple four-step instructions.
+- Editor controls are compact and arranged in one horizontal row; on narrow screens they can scroll horizontally.
+- Main controls are smaller and use four columns on phones to show more map.

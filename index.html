@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#007aff">
-<title>Territory Tracker — Stable Test</title>
+<title>Territory Tracker — Multi-Territory v38</title>
 <link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
@@ -12,10 +12,10 @@
 .app{height:100vh;display:flex;flex-direction:column}.header{background:#fff;padding:45px 12px 9px;border-bottom:1px solid #ddd;z-index:5}
 .header h1{margin:0;text-align:center;font-size:20px}.header p{text-align:center;margin:3px 0;color:#666;font-size:12px}
 #map{flex:1;min-height:0}.bottom{background:#fff;padding:9px 9px calc(9px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px #0002;z-index:10}
-.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.actions button{border:0;border-radius:10px;padding:10px 4px;font-weight:700;background:#e5e5ea}.actions .blue{background:#007aff;color:#fff}
+.actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}.actions button{border:0;border-radius:8px;padding:7px 3px;min-height:34px;font-weight:700;font-size:12px;line-height:14px;background:#e5e5ea}.actions .blue,.actions .primary{background:#007aff;color:#fff}
 .legend{text-align:center;color:#666;font-size:10px;margin-top:7px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 3px 0 7px;vertical-align:-1px}
 #editor,#houseSheet{display:none;position:fixed;left:10px;right:10px;top:82px;bottom:auto;background:#fff;border-radius:16px;box-shadow:0 4px 20px #0004;padding:14px;z-index:10000;max-height:52vh;overflow:auto}
-.show{display:block!important}.editorBtns{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}.editorBtns button,.roadBtns button{border:0;border-radius:10px;padding:11px 5px;font-weight:700;background:#e5e5ea}.editorBtns .active,.roadBtns .primary{background:#007aff;color:#fff}
+.show{display:block!important}.editorBtns{display:flex;flex-wrap:nowrap;gap:4px;margin-top:8px;overflow-x:auto;padding-bottom:2px}.editorBtns button,.roadBtns button{border:0;border-radius:8px;padding:7px 7px;min-height:34px;font-size:11px;line-height:13px;font-weight:700;background:#e5e5ea;white-space:nowrap;flex:1 1 auto}.editorBtns .active,.roadBtns .primary{background:#007aff;color:#fff}.editorBtns button.pulse{background:#007aff;color:#fff}
 .roadControls{display:none;margin-top:10px;padding:10px;background:#f2f2f7;border:1px solid #d1d1d6;border-radius:12px;position:relative;z-index:10001}.roadBtns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:8px}
 .small{font-size:12px;color:#666}.sheetTitle{font-size:19px;font-weight:700}.statuses{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:12px 0}.statuses button{border:0;border-radius:10px;padding:10px 3px;font-weight:700}
 textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding:9px;font:inherit}.save{width:100%;border:0;border-radius:11px;background:#007aff;color:#fff;padding:12px;margin-top:8px;font-weight:700}
@@ -74,12 +74,6 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 
 
 #syncSignedInBadge{font-weight:600}
-#territoryManager{position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:35000;display:none;align-items:flex-end}
-#territoryManager.show{display:flex}
-.tmSheet{background:#fff;width:100%;max-height:82vh;border-radius:18px 18px 0 0;padding:14px;box-shadow:0 -8px 30px rgba(0,0,0,.2);overflow:auto}
-.tmTitle{font-size:20px;font-weight:800;margin-bottom:5px}.tmSub{font-size:13px;color:#555;margin-bottom:10px}
-.tmRow{display:flex;align-items:center;gap:7px;padding:10px 4px;border-bottom:1px solid #eee}.tmRowName{flex:1;font-weight:700}.tmMeta{font-size:11px;color:#777}
-.tmBtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.tmBtns button{flex:1;min-width:125px}
 @media(max-width:600px){#syncSheet input{font-size:16px!important;min-height:44px}}
 </style>
 
@@ -99,13 +93,13 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
   #map{
     position:fixed!important;
     top:58px!important;left:0!important;right:0!important;
-    bottom:190px!important;height:auto!important;min-height:0!important;
+    bottom:126px!important;height:auto!important;min-height:0!important;
     z-index:1!important;
   }
   .bottom{
     position:fixed!important;
     left:0!important;right:0!important;bottom:0!important;
-    height:190px;
+    height:126px;
     padding:6px 7px calc(6px + env(safe-area-inset-bottom));
     box-sizing:border-box;
     background:#fff;
@@ -116,16 +110,16 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
   }
   .actions{
     display:grid!important;
-    grid-template-columns:repeat(3,minmax(0,1fr))!important;
-    grid-auto-rows:44px;
-    gap:5px;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-auto-rows:34px;
+    gap:4px;
   }
   .actions button{
-    min-width:0;min-height:44px;padding:4px 2px;
-    border-radius:9px;font-size:11px;line-height:13px;font-weight:700;
+    min-width:0;min-height:34px;padding:3px 2px;
+    border-radius:8px;font-size:10px;line-height:11px;font-weight:700;
     touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   }
-  .legend{font-size:8px;margin-top:4px;white-space:nowrap;overflow:hidden}
+  .legend{font-size:8px;margin-top:3px;white-space:nowrap;overflow:hidden}
   #banner{
     position:fixed!important;top:62px!important;left:7px!important;right:7px!important;
     font-size:12px;padding:7px;z-index:25000!important;
@@ -137,8 +131,8 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
     z-index:30000!important;overflow:auto;-webkit-overflow-scrolling:touch;
   }
   #editor .sheetTitle,#houseSheet .sheetTitle{font-size:18px}
-  .editorBtns{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-  .editorBtns button,.roadBtns button{min-height:44px;padding:8px 4px;font-size:13px;touch-action:manipulation}
+  .editorBtns{display:flex!important;flex-wrap:nowrap!important;gap:4px!important;overflow-x:auto!important}
+  .editorBtns button,.roadBtns button{min-height:34px!important;padding:6px 6px!important;font-size:10px!important;line-height:11px!important;touch-action:manipulation;flex:1 0 auto!important}
   .roadControls{padding:8px}
   .roadBtns{grid-template-columns:1fr;gap:6px}
   .statuses{grid-template-columns:repeat(2,1fr);gap:7px}
@@ -152,11 +146,10 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 </head>
 <body>
 <div class="app">
-<header class="header"><h1>Territory Tracker</h1><p id="currentTerritoryName">Republic / Cardale</p></header>
+<header class="header"><h1>Territory Tracker</h1><p>Republic / Cardale</p></header>
 <div id="banner"></div><div id="map"></div>
 <div class="bottom">
 <div class="actions">
-<button id="territories" class="blue">🗂️ Territories</button>
 <button id="houses" class="blue">🏠 Houses OFF</button>
 <button id="locate">📍 My Location</button>
 <button id="card">🗺️ Territory Card</button>
@@ -183,24 +176,6 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 </div>
 </div></div>
 
-
-<section id="territoryManager">
- <div class="tmSheet">
-  <div class="tmTitle">🗂️ Territories</div>
-  <div class="tmSub">Each territory is independent. Create, switch, rename, archive, or import a territory without changing the others.</div>
-  <div class="tmBtns">
-   <button id="tmNew" class="primary">➕ New Territory</button>
-   <button id="tmImport">📂 Import as New</button>
-  </div>
-  <div id="tmList" style="margin-top:8px"></div>
-  <div class="tmBtns">
-   <button id="tmRename">✏️ Rename Current</button>
-   <button id="tmArchive">📦 Archive Current</button>
-   <button id="tmClose" style="background:#e5e5ea;color:#111">Close</button>
-  </div>
-  <input id="tmImportFile" type="file" accept=".json,application/json" style="display:none">
- </div>
-</section>
 
 <section id="syncSheet">
   <div class="sheetTitle">☁️ Cloud Sync</div>
@@ -241,7 +216,7 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 
 <section id="editor">
 <div class="sheetTitle" id="editorTitle">Edit Territory</div>
-<div class="small" id="editorHelp">EDITING ORDER: 1) Add Point at each intersection. 2) Follow Road. 3) Tap two blue points in order. 4) Review the blue road preview. 5) Tap Add Road Segment.</div>
+<div class="small" id="editorHelp">Drag blue points directly. Use Add Point to insert a point. Follow Road: select two adjacent points, review the blue line, then tap Add Road Segment.</div>
 <div id="dnwChooser" style="display:none;margin-top:8px">
 <div class="small" style="margin-bottom:6px">Choose which Do Not Work area you want to edit.</div><label class="small" for="dnwSelect">Area to edit</label>
 <select id="dnwSelect" style="width:100%;padding:9px;border:1px solid #ccc;border-radius:9px"></select><label class="small" for="dnwName" style="display:block;margin-top:7px">Area name</label>
@@ -252,19 +227,18 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 <strong>Add Do Not Work Area:</strong> tap the map to place Point 1, Point 2, Point 3… in order. When you have at least 3 points, tap <strong>Finish Area</strong>.
 </div>
 <div class="editorBtns">
-<button id="freehand" class="active">✏️ Freehand</button>
 <button id="followRoad">🛣️ Follow Road</button>
 <button id="addPoint">➕ Add Point</button>
 <button id="deleteSelected">🗑️ Delete Selected</button>
 <button id="deletePoint">➖ Delete Last</button>
-<button id="resetDNW">↩️ Reset This Area</button>
+<button id="resetDNW">↩️ Reset Changes</button>
 <button id="finishDNW" style="display:none">✅ Finish Area</button>
 <button id="deleteDNWArea" style="display:none">🗑️ Delete This Area</button>
 <button id="saveEdit" class="active">Save Changes</button>
 <button id="cancelEdit">Cancel</button>
 </div>
 <div id="roadControls" class="roadControls">
-<div class="small">FOLLOW ROAD: 1) Tap Point 1. 2) Tap Point 2. 3) Review the blue line. 4) Tap Add Road Segment.</div>
+<div class="small">FOLLOW ROAD: tap Point 1 → tap Point 2 → review the blue line → tap Add Road Segment.</div>
 <div id="roadName" style="font-weight:700;font-size:13px;margin-top:5px">Ready.</div>
 <div class="roadBtns">
 <button id="roadPreviewBtn">🔎 Preview Road</button><button id="roadAdd" class="primary" disabled style="opacity:.5">Add Road Segment</button>
@@ -300,8 +274,6 @@ function exportMapData(){
     territory:territory,
     dnw:dnw,
     dnwNames:dnwNames,
-    records:records,
-    territoryName:ttCurrent()?.name||'Territory',
     exportedAt:new Date().toISOString()
   };
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
@@ -321,7 +293,6 @@ function importMapDataFile(file){
       territory=data.territory;
       dnw=data.dnw;
       dnwNames=Array.isArray(data.dnwNames)?data.dnwNames:[];
-      records=data.records&&typeof data.records==='object'?data.records:{};
       while(dnwNames.length<dnw.length) dnwNames.push(`Do Not Work Area ${dnwNames.length+1}`);
       dnwNames=dnwNames.slice(0,dnw.length);
       localStorage.setItem('tt_geometry_stable',JSON.stringify({territory,dnw}));
@@ -440,136 +411,6 @@ let handles=[], selectedPointIndices=[], roadPreview=null, pendingRoad=null, ori
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
 
 const $=id=>document.getElementById(id);
-
-// ---------------- Multi-territory foundation ----------------
-// This is built around the working v33 editor. The existing editor handlers
-// below are intentionally preserved rather than replaced.
-const TT_REG_KEY='tt_territories_v2';
-const TT_CURRENT_KEY='tt_current_territory_v2';
-let currentTerritoryId=localStorage.getItem(TT_CURRENT_KEY)||'';
-let territoryRegistry=[];
-function ttClone(v){return JSON.parse(JSON.stringify(v));}
-function ttNewId(){return 't_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);}
-function ttSaveRegistry(){localStorage.setItem(TT_REG_KEY,JSON.stringify(territoryRegistry));}
-function ttCurrent(){return territoryRegistry.find(t=>t.id===currentTerritoryId)||null;}
-function ttSaveCurrent(){
-  const t=ttCurrent(); if(!t)return;
-  t.territory=ttClone(territory); t.dnw=ttClone(dnw); t.dnwNames=ttClone(dnwNames); t.records=ttClone(records); t.updatedAt=new Date().toISOString();
-  ttSaveRegistry();
-}
-function ttLoadRecord(t){
-  territory=ttClone(t.territory||[]);
-  dnw=ttClone(t.dnw||[]);
-  dnwNames=ttClone(t.dnwNames||[]);
-  records=ttClone(t.records||{});
-  while(dnwNames.length<dnw.length) dnwNames.push(`Do Not Work Area ${dnwNames.length+1}`);
-  dnwNames=dnwNames.slice(0,dnw.length);
-  localStorage.setItem('tt_geometry_stable',JSON.stringify({territory,dnw}));
-  localStorage.setItem('tt_dnw_names_v1',JSON.stringify(dnwNames));
-  localStorage.setItem('tt_house_records_stable',JSON.stringify(records));
-  $('currentTerritoryName').textContent=t.name;
-}
-function ttLoadRegistry(){
-  try{territoryRegistry=JSON.parse(localStorage.getItem(TT_REG_KEY)||'[]')}catch(e){territoryRegistry=[]}
-  if(!Array.isArray(territoryRegistry))territoryRegistry=[];
-  if(!territoryRegistry.length){
-    try{
-      const old=JSON.parse(localStorage.getItem('tt_territories_v1')||'[]');
-      if(Array.isArray(old)&&old.length)territoryRegistry=old;
-    }catch(e){}
-  }
-  if(!territoryRegistry.length){
-    const t={id:ttNewId(),name:'Republic / Cardale',archived:false,territory:ttClone(territory),dnw:ttClone(dnw),dnwNames:ttClone(dnwNames),records:ttClone(records),updatedAt:new Date().toISOString()};
-    territoryRegistry=[t]; currentTerritoryId=t.id; ttSaveRegistry();
-  }
-  if(!territoryRegistry.some(t=>t.id===currentTerritoryId)){
-    const active=territoryRegistry.find(t=>!t.archived)||territoryRegistry[0];
-    currentTerritoryId=active.id;
-  }
-  localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
-  const t=ttCurrent(); if(t)ttLoadRecord(t);
-}
-function ttRebuildMap(){
-  refreshTerritoryDisplay();
-  dnwLayers.forEach(l=>{if(l)map.removeLayer(l)});
-  dnwLabelLayers.forEach(l=>{if(l)map.removeLayer(l)});
-  dnwLayers.length=0; dnwLabelLayers.length=0;
-  dnw.forEach((_,i)=>ensureDNWLayer(i)); refreshAllDNWLabels();
-  houseLayer.clearLayers(); if(housesVisible)loadHouses();
-}
-function ttRenderManager(){
-  const list=$('tmList'); list.innerHTML='';
-  const active=territoryRegistry.filter(t=>!t.archived), archived=territoryRegistry.filter(t=>t.archived);
-  function group(title,items){
-    if(!items.length)return;
-    const h=document.createElement('div');h.className='small';h.style.cssText='font-weight:800;margin:9px 4px 3px';h.textContent=title;list.appendChild(h);
-    items.forEach(t=>{
-      const row=document.createElement('div');row.className='tmRow';
-      const name=document.createElement('div');name.className='tmRowName';name.textContent=t.name;
-      const meta=document.createElement('div');meta.className='tmMeta';meta.textContent=(t.id===currentTerritoryId?'CURRENT • ':'')+((t.territory||[]).length)+' boundary points';
-      const open=document.createElement('button');
-      open.textContent=t.archived?'↩️ Restore':'Open';
-      open.disabled=!t.archived && t.id===currentTerritoryId;
-      open.style.minWidth='72px';
-      open.onclick=()=>{ if(t.archived){ t.archived=false; ttSaveRegistry(); ttRenderManager(); } else ttSwitch(t.id); };
-      row.append(name,meta,open);list.appendChild(row);
-    });
-  }
-  group('ACTIVE TERRITORIES',active); group('ARCHIVED',archived);
-}
-function ttShowManager(){ttRenderManager();$('territoryManager').classList.add('show');}
-function ttHideManager(){$('territoryManager').classList.remove('show');}
-function ttSwitch(id){
-  const t=territoryRegistry.find(x=>x.id===id); if(!t)return;
-  if(editMode)closeEditor(false);
-  ttSaveCurrent();
-  currentTerritoryId=id; localStorage.setItem(TT_CURRENT_KEY,id);
-  ttLoadRecord(t); ttRebuildMap(); ttHideManager();
-  banner('TERRITORY: '+t.name); setTimeout(()=>banner(''),1600);
-}
-function ttNewTerritory(){
-  ttSaveCurrent();
-  const name=(prompt('Name for the new territory:')||'').trim(); if(!name)return;
-  const t={id:ttNewId(),name,archived:false,territory:[],dnw:[],dnwNames:[],records:{},updatedAt:new Date().toISOString()};
-  territoryRegistry.push(t); currentTerritoryId=t.id; localStorage.setItem(TT_CURRENT_KEY,t.id);
-  ttSaveRegistry(); ttLoadRecord(t); ttRebuildMap(); ttHideManager(); $('editTerritory').click();
-}
-function ttRename(){
-  const t=ttCurrent(); if(!t)return;
-  const name=(prompt('New territory name:',t.name)||'').trim(); if(!name)return;
-  t.name=name; ttSaveCurrent(); $('currentTerritoryName').textContent=name; ttRenderManager();
-}
-function ttArchive(){
-  const t=ttCurrent(); if(!t)return;
-  if(territoryRegistry.filter(x=>!x.archived).length<=1){alert('Keep at least one active territory.');return}
-  if(!confirm('Archive '+t.name+'? You can restore it later.'))return;
-  t.archived=true; ttSaveCurrent();
-  const next=territoryRegistry.find(x=>!x.archived); currentTerritoryId=next.id; localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
-  ttLoadRecord(next); ttRebuildMap(); ttHideManager();
-}
-function ttImportAsNew(file){
-  const r=new FileReader(); r.onload=()=>{
-    try{
-      const d=JSON.parse(r.result);
-      if(!Array.isArray(d.territory)||!Array.isArray(d.dnw))throw Error();
-      const name=(prompt('Name for the imported territory:','Imported Territory')||'').trim(); if(!name)return;
-      ttSaveCurrent();
-      const t={id:ttNewId(),name,archived:false,territory:d.territory,dnw:d.dnw,dnwNames:Array.isArray(d.dnwNames)?d.dnwNames:[],records:d.records||{},updatedAt:new Date().toISOString()};
-      while(t.dnwNames.length<t.dnw.length)t.dnwNames.push(`Do Not Work Area ${t.dnwNames.length+1}`);
-      t.dnwNames=t.dnwNames.slice(0,t.dnw.length);
-      territoryRegistry.push(t); currentTerritoryId=t.id; localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
-      ttSaveRegistry(); ttLoadRecord(t); ttRebuildMap(); ttHideManager();
-    }catch(e){alert('That file does not contain valid Territory Tracker map data.')}
-  }; r.readAsText(file);
-}
-ttLoadRegistry();
-$('territories').addEventListener('click',ttShowManager);
-$('tmClose').addEventListener('click',ttHideManager);
-$('tmNew').addEventListener('click',ttNewTerritory);
-$('tmRename').addEventListener('click',ttRename);
-$('tmArchive').addEventListener('click',ttArchive);
-$('tmImport').addEventListener('click',()=>$('tmImportFile').click());
-$('tmImportFile').addEventListener('change',e=>{if(e.target.files?.[0])ttImportAsNew(e.target.files[0]);e.target.value=''});
 
 let syncClient=null;
 let syncUser=null;
@@ -727,6 +568,13 @@ $('importData').addEventListener('change',e=>{
 });
 
 function banner(t){$('banner').textContent=t;$('banner').style.display=t?'block':'none'}
+function setEditorMode(mode){
+  $('addPoint').classList.toggle('active',mode==='add');
+  $('followRoad').classList.toggle('active',mode==='road');
+}
+function pulseButton(id){
+  const b=$(id); if(!b)return; b.classList.add('pulse'); setTimeout(()=>b.classList.remove('pulse'),180);
+}
 function currentDNWIndex(){
   if(activeDNWIndex!==null)return activeDNWIndex;
   if(editorTarget!=='territory')return Number(editorTarget.slice(3));
@@ -853,7 +701,7 @@ function makeHandles(){
        $('roadName').textContent='Point 1 selected. Now tap Point 2.';
        banner('FOLLOW ROAD: TAP POINT 2');
      } else {
-       // Freehand: clicking a point selects it for Delete Selected.
+       // Clicking a point selects it for Delete Selected.
        handles.forEach(x=>x.setOpacity(.65));
        h.setOpacity(1);
        window.selectedFreehandIndex=i;
@@ -874,6 +722,7 @@ function stopRoadMode(){
  if(roadPreview){map.removeLayer(roadPreview);roadPreview=null}
  $('roadControls').style.display='none';
  handles.forEach(h=>h.setOpacity(1));
+ setEditorMode('');
 }
 function closeEditor(save){
   if(!save && original){
@@ -892,18 +741,45 @@ function closeEditor(save){
   }else if(save){
     localStorage.setItem('tt_geometry_stable',JSON.stringify({territory,dnw}));
     localStorage.setItem('tt_dnw_names_v1',JSON.stringify(dnwNames));
-    if(typeof ttSaveCurrent==='function')ttSaveCurrent();
   }
   stopRoadMode();
   clearHandles();
   editMode=false; addMode=false; addingDNW=false; activeDNWIndex=null; original=null;
   $('editor').classList.remove('show');document.body.classList.remove('editor-open');
   $('dnwChooser').style.display='none';
+  $('resetDNW').textContent='↩️ Reset Changes';
+  setEditorMode('');
   dnwLayers.forEach(layer=>{
     if(layer)layer.setStyle({color:'#b8860b',weight:2,fillColor:'#ffd54f',fillOpacity:.48});
   });
   banner('');
 }
+$('resetDNW').addEventListener('click',()=>{
+ if(!editMode || !original){return;}
+ pulseButton('resetDNW');
+ if(editorTarget==='territory'){
+   territory=JSON.parse(JSON.stringify(original.territory||[]));
+   territoryLayer.setLatLngs(territory);
+   refreshTerritoryDisplay();
+   addMode=false; setEditorMode(''); makeHandles();
+   banner('TERRITORY CHANGES RESET');
+   return;
+ }
+ const idx=currentDNWIndex();
+ if(idx===null || idx===undefined || !dnw[idx])return;
+ dnw[idx]=[];
+ ensureDNWLayer(idx).setLatLngs([]);
+ refreshDNWLabel(idx);
+ clearHandles();
+ addingDNW=true; addMode=false; setEditorMode('');
+ $('finishDNW').style.display='inline-block';
+ $('dnwChooser').style.display='none';
+ $('dnwAddHelp').style.display='block';
+ $('editorTitle').textContent=`Rebuild Do Not Work Area ${idx+1}`;
+ $('editorHelp').textContent='This area is now empty. Tap its boundary points on the map, then tap Finish Area.';
+ banner(`REBUILDING DO NOT WORK AREA ${idx+1}: TAP POINT 1`);
+});
+
 $('saveEdit').addEventListener('click',()=>closeEditor(true));
 $('cancelEdit').addEventListener('click',()=>closeEditor(false));
 
@@ -913,17 +789,18 @@ $('editTerritory').addEventListener('click',()=>{
   original=JSON.parse(JSON.stringify({territory,dnw,dnwNames}));
   $('editor').classList.add('show');document.body.classList.add('editor-open');
   $('dnwChooser').style.display='none';
+  $('resetDNW').textContent='↩️ Reset Changes';
   $('editorTitle').textContent='Edit Territory';
-  $('freehand').classList.add('active'); $('followRoad').classList.remove('active');
   if(!Array.isArray(territory)||territory.length===0){
-    addMode=true;
-    $('editorHelp').textContent='NEW TERRITORY: Tap the map to place boundary points. Add at least 3 points. Then you can drag, add, delete, or use Follow Road.';
-    banner('NEW TERRITORY: TAP THE MAP TO PLACE POINT 1');
+    addMode=true; setEditorMode('add');
+    $('editorHelp').textContent='New territory: tap the map to place boundary points. Add at least 3 points.';
+    banner('NEW TERRITORY: TAP POINT 1');
   }else{
-    $('editorHelp').textContent='Edit the red territory boundary. Drag points, add points, or use Follow Road.';
-    makeHandles();
+    setEditorMode('');
+    $('editorHelp').textContent='Drag blue points directly. Use Add Point to insert a point. Follow Road to replace a boundary segment with a road.';
     banner('EDITING TERRITORY');
   }
+  makeHandles();
 });
 function setActiveDNW(idx){
   if(idx<0 || idx>=dnw.length)return;
@@ -938,7 +815,9 @@ function setActiveDNW(idx){
   $('deleteDNWArea').style.display='inline-block';
   $('editorTitle').textContent=`Edit Do Not Work — ${dnwNames[idx]||`Area ${idx+1}`}`;
   $('dnwName').value=dnwNames[idx]||`Do Not Work Area ${idx+1}`;
-  $('editorHelp').textContent='You are editing ONLY this Do Not Work area. The blue points belong to the selected area.';
+  $('editorHelp').textContent='Drag blue points directly. Use Add Point to insert a point. Follow Road to replace a boundary segment with a road.';
+  $('resetDNW').textContent='↩️ Reset This Area';
+  setEditorMode('');
   dnwLayers.forEach((layer,i)=>{ if(layer) layer.setStyle({fillOpacity:i===idx?.62:.10,weight:i===idx?3:1}); });
   makeHandles();
   banner(`EDITING DO NOT WORK AREA ${idx+1}`);
@@ -986,6 +865,8 @@ function beginAddDNW(){
   $('editorTitle').textContent=`Add Do Not Work Area ${idx+1}`;
   $('dnwName').value=dnwNames[idx];
   $('editorHelp').textContent='Tap the map to place each boundary point. Add at least 3 points, then tap Finish Area.';
+  $('resetDNW').textContent='↩️ Reset This Area';
+  setEditorMode('');
   clearHandles();
   banner('ADD DO NOT WORK AREA: TAP POINT 1');
 }
@@ -1043,23 +924,14 @@ $('deleteDNWArea').addEventListener('click',()=>{
   }
 });
 
-$('freehand').addEventListener('click',()=>{
- if(!editMode)return;
- if(addingDNW){banner('Finish the new Do Not Work area first.');return}
- stopRoadMode();addMode=false;window.selectedFreehandIndex=null;makeHandles();
- $('freehand').classList.add('active');$('followRoad').classList.remove('active');
- $('editorHelp').textContent='Freehand: drag points, Add Point to create a point where you tap, or select a point and Delete Selected.';
- banner('FREEHAND EDITING');
-});
-
 $('addPoint').addEventListener('click',()=>{
  if(!editMode)return;
- stopRoadMode();addMode=true;window.selectedFreehandIndex=null;makeHandles();
- banner('ADD POINT: TAP EXACTLY WHERE YOU WANT THE BLUE POINT');
+ stopRoadMode();addMode=true;window.selectedFreehandIndex=null;setEditorMode('add');makeHandles();
+ banner('ADD POINT: TAP THE MAP WHERE YOU WANT THE NEW POINT');
 });
 
 $('deleteSelected').addEventListener('click',()=>{
- if(!editMode)return;
+ if(!editMode)return; pulseButton('deleteSelected');
  let idx=window.selectedFreehandIndex;
  if(roadMode && selectedPointIndices.length===1) idx=selectedPointIndices[0];
  if(idx===null || idx===undefined){
@@ -1077,7 +949,7 @@ $('deleteSelected').addEventListener('click',()=>{
 });
 
 $('deletePoint').addEventListener('click',()=>{
- if(!editMode)return;
+ if(!editMode)return; pulseButton('deletePoint');
  const arr=currentArray();if(arr.length<=3){banner('A BOUNDARY NEEDS AT LEAST 3 POINTS');return}
  arr.pop();currentLayer().setLatLngs(arr);
      if(editorTarget==='territory')refreshTerritoryDisplay();
@@ -1122,6 +994,7 @@ map.on('click',e=>{
    if(editorTarget!=='territory')refreshDNWLabel(currentDNWIndex());
    addMode=false;
    makeHandles();
+   setEditorMode('');
    banner(`POINT ADDED TO ${editorTarget==='territory'?'TERRITORY':'DO NOT WORK AREA '+(idx+1)}`);
    return;
  }
@@ -1132,14 +1005,14 @@ $('followRoad').addEventListener('click',()=>{
  if(roadPreview){map.removeLayer(roadPreview);roadPreview=null}
  $('roadControls').style.display='block';
  $('roadAdd').disabled=true; $('roadAdd').style.opacity='.5';
- $('followRoad').classList.add('active');$('freehand').classList.remove('active');
+ setEditorMode('road');
  makeHandles();
  $('roadName').textContent='STEP 1: Tap the first blue point.';
  banner('FOLLOW ROAD: TAP POINT 1');
 });
 
 $('roadCancel').addEventListener('click',()=>{
- stopRoadMode();makeHandles();banner('FREEHAND EDITING');
+ stopRoadMode();setEditorMode('');makeHandles();banner('ROAD EDITING CANCELED');
 });
 
 async function snapPoint(lat,lng){
@@ -1435,26 +1308,6 @@ function enterLiveMapMode(){
 $('card').addEventListener('click',()=>{
   if(cardMode) enterLiveMapMode();
   else enterCardMode();
-});
-
-$('resetDNW').addEventListener('click',()=>{
- if(!editMode || editorTarget==='territory'){
-   banner('RESET THIS AREA IS ONLY FOR DO NOT WORK');
-   return;
- }
- const idx=currentDNWIndex();
- if(idx===null)return;
- dnw[idx]=[];
- ensureDNWLayer(idx).setLatLngs([]);
- refreshDNWLabel(idx);
- clearHandles();
- addingDNW=true;
- $('finishDNW').style.display='inline-block';
- $('dnwChooser').style.display='none';
- $('dnwAddHelp').style.display='block';
- $('editorTitle').textContent=`Rebuild Do Not Work Area ${idx+1}`;
- $('editorHelp').textContent='This area is now empty. Tap its boundary points on the map, then tap Finish Area.';
- banner(`REBUILDING DO NOT WORK AREA ${idx+1}: TAP POINT 1`);
 });
 
 map.on('moveend',()=>{if(housesVisible&&!editMode)loadHouses()});
