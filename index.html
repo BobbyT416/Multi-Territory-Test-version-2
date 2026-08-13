@@ -636,6 +636,7 @@ async function syncConnect(){
     syncClient=window.supabase.createClient(url,key,{
       auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
     });
+    syncWatchAuthEvents();
     syncUrl=url;syncKey=key;
     localStorage.setItem('tt_supabase_url',url);
     localStorage.setItem('tt_supabase_publishable_key',key);
@@ -648,6 +649,30 @@ async function syncConnect(){
     syncSetStatus('Could not connect. Check the Project URL and Publishable key.');
   }
 }
+async function syncHandlePasswordRecovery(){
+  if(!syncClient)return;
+  const {data:{session}}=await syncClient.auth.getSession();
+  if(!session)return;
+  const newPassword=window.prompt('Password reset: enter your new Supabase password.');
+  if(!newPassword)return;
+  if(newPassword.length<6){
+    alert('Password must be at least 6 characters.');
+    return;
+  }
+  const confirmPassword=window.prompt('Enter the new password again to confirm.');
+  if(newPassword!==confirmPassword){
+    alert('The passwords did not match. Please start the reset again.');
+    return;
+  }
+  const {error}=await syncClient.auth.updateUser({password:newPassword});
+  if(error){
+    alert('Password update failed: '+error.message);
+    return;
+  }
+  alert('Password updated successfully. You can now sign in normally.');
+  await syncRefreshSession();
+}
+
 async function syncRefreshSession(){
   if(!syncClient)return;
   const {data:{session}}=await syncClient.auth.getSession();
@@ -687,6 +712,15 @@ async function syncSignOut(){
   $('syncLoginFields').style.display='block';
   syncSetStatus('Signed out.');
 }
+function syncWatchAuthEvents(){
+  if(!syncClient)return;
+  syncClient.auth.onAuthStateChange((event)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      setTimeout(()=>syncHandlePasswordRecovery(),100);
+    }
+  });
+}
+
 async function syncSaveCloud(){
   if(!syncClient||!syncUser){syncSetStatus('Please sign in first.');return}
   syncSetStatus('Saving map to cloud...');
@@ -717,6 +751,8 @@ async function syncSaveCloud(){
 }
 async function syncLoadCloud(){
   if(!syncClient||!syncUser){syncSetStatus('Please sign in first.');return}
+  const current=ttCurrent();
+  if(!current){syncSetStatus('Select a territory first.');return}
   syncSetStatus('Loading map from cloud...');
   const {data,error}=await syncClient.from('territory_data')
     .select('id,territory,dnw,dnw_names,house_records,updated_at')
@@ -724,22 +760,36 @@ async function syncLoadCloud(){
   if(error){syncSetStatus('Cloud load failed: '+error.message);return}
   if(!data||!data.length){syncSetStatus('No cloud map has been saved yet.');return}
   const row=data[0];
-  if(!confirm('Load the cloud map? This will replace the territory and Do Not Work boundaries on this device.'))return;
-  if(!Array.isArray(row.territory)||!Array.isArray(row.dnw)){syncSetStatus('Cloud data is invalid.');return}
-  territory=row.territory;
-  dnw=row.dnw;
-  dnwNames=Array.isArray(row.dnw_names)?row.dnw_names:[];
-  while(dnwNames.length<dnw.length) dnwNames.push(`Do Not Work Area ${dnwNames.length+1}`);
-  dnwNames=dnwNames.slice(0,dnw.length);
-  if(row.house_records && typeof row.house_records==='object' && !Array.isArray(row.house_records)){
-    records=row.house_records;
-    localStorage.setItem('tt_house_records_stable',JSON.stringify(records));
+  if(!Array.isArray(row.territory)||!Array.isArray(row.dnw)){
+    syncSetStatus('Cloud data is invalid.');return
   }
-  localStorage.setItem('tt_geometry_stable',JSON.stringify({territory,dnw}));
-  localStorage.setItem('tt_dnw_names_v1',JSON.stringify(dnwNames));
+  if(!confirm('Restore the saved cloud map into the currently selected territory?'))return
+
+  // The existing cloud row was created before multi-territory support.
+  // Restore that known-good cloud copy into the selected local territory,
+  // rather than replacing the entire territory registry.
+  current.territory=ttClone(row.territory);
+  current.dnw=ttClone(row.dnw);
+  current.dnwNames=Array.isArray(row.dnw_names)?ttClone(row.dnw_names):[];
+  current.records=(row.house_records && typeof row.house_records==='object' && !Array.isArray(row.house_records))
+    ?ttClone(row.house_records):{};
+  current.updatedAt=row.updated_at||new Date().toISOString();
+
+  while(current.dnwNames.length<current.dnw.length)
+    current.dnwNames.push(`Do Not Work Area ${current.dnwNames.length+1}`);
+  current.dnwNames=current.dnwNames.slice(0,current.dnw.length);
+
+  ttSaveRegistry();
+  ttLoadRecord(current);
+  ttRebuildMap();
+  ttHideManager();
+  setTimeout(()=>ttCenterOnTerritory(current),50);
+  setTimeout(()=>ttCenterOnTerritory(current),250);
+  setTimeout(()=>loadHouses(),300);
+
   localStorage.setItem('tt_last_cloud_sync',row.updated_at||new Date().toISOString());
-  location.reload();
-}
+  syncSetStatus('Cloud map restored to '+current.name+'.',true);
+} 
 
 $('cloudSync').addEventListener('click',syncShow);
 $('syncClose').addEventListener('click',syncHide);
