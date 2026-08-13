@@ -502,7 +502,25 @@ function ttLoadRegistry(){
     currentTerritoryId=active.id;
   }
   localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
-  const t=ttCurrent(); if(t)ttLoadRecord(t);
+  const t=ttCurrent();
+  if(t){
+    ttLoadRecord(t);
+    setTimeout(()=>ttCenterOnTerritory(t),50);
+    setTimeout(()=>ttCenterOnTerritory(t),250);
+  }
+}
+function ttCenterOnTerritory(t){
+  if(!t || !Array.isArray(t.territory) || t.territory.length<2)return false;
+  try{
+    const bounds=L.latLngBounds(t.territory.map(p=>[p[0],p[1]]));
+    if(!bounds.isValid())return false;
+    map.invalidateSize(false);
+    map.fitBounds(bounds,{padding:[28,28],maxZoom:17,animate:false});
+    return true;
+  }catch(e){
+    console.warn('Territory centering failed',e);
+    return false;
+  }
 }
 function ttRebuildMap(){
   refreshTerritoryDisplay();
@@ -539,7 +557,13 @@ function ttSwitch(id){
   if(editMode)closeEditor(false);
   ttSaveCurrent();
   currentTerritoryId=id; localStorage.setItem(TT_CURRENT_KEY,id);
-  ttLoadRecord(t); ttRebuildMap(); ttHideManager();
+  ttLoadRecord(t);
+  ttRebuildMap();
+  ttHideManager();
+  // Center from the selected territory record itself, not from the
+  // map's previous position. Blank new territories have no bounds yet.
+  setTimeout(()=>ttCenterOnTerritory(t),50);
+  setTimeout(()=>ttCenterOnTerritory(t),250);
   banner('TERRITORY: '+t.name); setTimeout(()=>banner(''),1600);
 }
 function ttNewTerritory(){
@@ -919,6 +943,9 @@ function closeEditor(save){
     if(layer)layer.setStyle({color:'#b8860b',weight:2,fillColor:'#ffd54f',fillOpacity:.48});
   });
   banner('');
+  // The editor suppresses house loading. Refresh once it is fully closed,
+  // especially for newly created territories.
+  if(housesVisible) setTimeout(()=>loadHouses(),120);
 }
 $('saveEdit').addEventListener('click',()=>closeEditor(true));
 $('cancelEdit').addEventListener('click',()=>closeEditor(false));
