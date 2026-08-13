@@ -504,14 +504,6 @@ function ttLoadRegistry(){
   localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
   const t=ttCurrent(); if(t)ttLoadRecord(t);
 }
-function ttFocusCurrentTerritory(){
-  if(!Array.isArray(territory) || territory.length<2)return;
-  try{
-    map.invalidateSize(false);
-    const b=L.latLngBounds(territory.map(p=>[p.lat,p.lng]));
-    if(b.isValid()) map.fitBounds(b,{padding:[30,30],maxZoom:17,animate:false});
-  }catch(e){}
-}
 function ttRebuildMap(){
   refreshTerritoryDisplay();
   dnwLayers.forEach(l=>{if(l)map.removeLayer(l)});
@@ -519,7 +511,6 @@ function ttRebuildMap(){
   dnwLayers.length=0; dnwLabelLayers.length=0;
   dnw.forEach((_,i)=>ensureDNWLayer(i)); refreshAllDNWLabels();
   houseLayer.clearLayers(); if(housesVisible)loadHouses();
-  setTimeout(ttFocusCurrentTerritory,80);
 }
 function ttRenderManager(){
   const list=$('tmList'); list.innerHTML='';
@@ -536,11 +527,7 @@ function ttRenderManager(){
       open.disabled=!t.archived && t.id===currentTerritoryId;
       open.style.minWidth='72px';
       open.onclick=()=>{ if(t.archived){ t.archived=false; ttSaveRegistry(); ttRenderManager(); } else ttSwitch(t.id); };
-      const del=document.createElement('button');
-      del.textContent='Delete';
-      del.style.cssText='min-width:68px;background:#b42318;color:#fff;border:0;border-radius:7px;padding:7px 9px;font-weight:700';
-      del.onclick=()=>ttDelete(t.id);
-      row.append(name,meta,open,del);list.appendChild(row);
+      row.append(name,meta,open);list.appendChild(row);
     });
   }
   group('ACTIVE TERRITORIES',active); group('ARCHIVED',archived);
@@ -553,8 +540,6 @@ function ttSwitch(id){
   ttSaveCurrent();
   currentTerritoryId=id; localStorage.setItem(TT_CURRENT_KEY,id);
   ttLoadRecord(t); ttRebuildMap(); ttHideManager();
-  setTimeout(ttFocusCurrentTerritory,120);
-  setTimeout(ttFocusCurrentTerritory,450);
   banner('TERRITORY: '+t.name); setTimeout(()=>banner(''),1600);
 }
 function ttNewTerritory(){
@@ -568,27 +553,6 @@ function ttRename(){
   const t=ttCurrent(); if(!t)return;
   const name=(prompt('New territory name:',t.name)||'').trim(); if(!name)return;
   t.name=name; ttSaveCurrent(); $('currentTerritoryName').textContent=name; ttRenderManager();
-}
-function ttDelete(id){
-  const t=territoryRegistry.find(x=>x.id===id); if(!t)return;
-  if(territoryRegistry.length<=1){
-    alert('You must keep at least one territory.');
-    return;
-  }
-  if(!confirm('Delete "'+t.name+'"? This cannot be undone.'))return;
-  const wasCurrent=(t.id===currentTerritoryId);
-  territoryRegistry=territoryRegistry.filter(x=>x.id!==id);
-  if(wasCurrent){
-    const next=territoryRegistry.find(x=>!x.archived)||territoryRegistry[0];
-    currentTerritoryId=next.id;
-    localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
-    ttLoadRecord(next);
-    ttRebuildMap();
-    setTimeout(ttFocusCurrentTerritory,120);
-    banner('TERRITORY: '+next.name); setTimeout(()=>banner(''),1600);
-  }
-  ttSaveRegistry();
-  ttRenderManager();
 }
 function ttArchive(){
   const t=ttCurrent(); if(!t)return;
@@ -610,7 +574,6 @@ function ttImportAsNew(file){
       t.dnwNames=t.dnwNames.slice(0,t.dnw.length);
       territoryRegistry.push(t); currentTerritoryId=t.id; localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
       ttSaveRegistry(); ttLoadRecord(t); ttRebuildMap(); ttHideManager();
-       setTimeout(ttFocusCurrentTerritory,120);
     }catch(e){alert('That file does not contain valid Territory Tracker map data.')}
   }; r.readAsText(file);
 }
