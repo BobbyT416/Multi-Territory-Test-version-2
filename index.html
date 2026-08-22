@@ -187,10 +187,21 @@ textarea{width:100%;height:70px;border:1px solid #ccc;border-radius:10px;padding
 <section id="territoryManager">
  <div class="tmSheet">
   <div class="tmTitle">🗂️ Territories</div>
-  <div class="tmSub">Each territory is independent. Create, switch, rename, archive, or import a territory without changing the others.</div>
+  <div class="tmSub">Each territory is independent. Create, switch, rename, archive, delete, or import a territory without changing the others.</div>
   <div class="tmBtns">
    <button id="tmNew" class="primary">➕ New Territory</button>
    <button id="tmImport">📂 Import as New</button>
+  </div>
+  <div id="tmNewForm" style="display:none;margin-top:9px;padding:10px;border:1px solid #d1d1d6;border-radius:12px;background:#f7f7f8">
+   <label class="small">Territory Name</label>
+   <input id="tmNewName" type="text" placeholder="e.g. Test Territory" autocomplete="off">
+   <label class="small" style="display:block;margin-top:7px">Starting Address</label>
+   <input id="tmNewAddress" type="text" placeholder="Enter an address to start the new territory" autocomplete="street-address">
+   <div class="tmBtns" style="margin-top:7px">
+    <button id="tmLocateNew" class="primary">📍 Locate Address</button>
+    <button id="tmCancelNew" style="background:#e5e5ea;color:#111">Cancel</button>
+   </div>
+   <div id="tmNewStatus" class="small" style="margin-top:6px"></div>
   </div>
   <div id="tmList" style="margin-top:8px"></div>
   <div class="tmBtns">
@@ -483,6 +494,13 @@ function ttLoadRecord(t){
   localStorage.setItem('tt_dnw_names_v1',JSON.stringify(dnwNames));
   localStorage.setItem('tt_house_records_stable',JSON.stringify(records));
   $('currentTerritoryName').textContent=t.name;
+  // Each territory owns its own display state; new/blank territories start
+  // with houses visible.
+  if(!Array.isArray(territory) || territory.length===0){
+    housesVisible=true;
+    remainingOnly=false;
+    if(typeof updateHouseButton==='function') updateHouseButton();
+  }
 }
 function ttLoadRegistry(){
   try{territoryRegistry=JSON.parse(localStorage.getItem(TT_REG_KEY)||'[]')}catch(e){territoryRegistry=[]}
@@ -510,13 +528,20 @@ function ttLoadRegistry(){
   }
 }
 function ttCenterOnTerritory(t){
-  if(!t || !Array.isArray(t.territory) || t.territory.length<2)return false;
+  if(!t)return false;
   try{
-    const bounds=L.latLngBounds(t.territory.map(p=>[p[0],p[1]]));
-    if(!bounds.isValid())return false;
     map.invalidateSize(false);
-    map.fitBounds(bounds,{padding:[28,28],maxZoom:17,animate:false});
-    return true;
+    if(Array.isArray(t.territory) && t.territory.length>=2){
+      const bounds=L.latLngBounds(t.territory.map(p=>[p[0],p[1]]));
+      if(!bounds.isValid())return false;
+      map.fitBounds(bounds,{padding:[28,28],maxZoom:17,animate:false});
+      return true;
+    }
+    if(t.startPoint && Number.isFinite(t.startPoint.lat) && Number.isFinite(t.startPoint.lng)){
+      map.setView([t.startPoint.lat,t.startPoint.lng],17,{animate:false});
+      return true;
+    }
+    return false;
   }catch(e){
     console.warn('Territory centering failed',e);
     return false;
@@ -545,7 +570,15 @@ function ttRenderManager(){
       open.disabled=!t.archived && t.id===currentTerritoryId;
       open.style.minWidth='72px';
       open.onclick=()=>{ if(t.archived){ t.archived=false; ttSaveRegistry(); ttRenderManager(); } else ttSwitch(t.id); };
-      row.append(name,meta,open);list.appendChild(row);
+
+      const del=document.createElement('button');
+      del.textContent='🗑️ Delete';
+      del.style.minWidth='78px';
+      del.style.background='#ff3b30';
+      del.style.color='#fff';
+      del.onclick=()=>ttDelete(t.id);
+
+      row.append(name,meta,open,del);list.appendChild(row);
     });
   }
   group('ACTIVE TERRITORIES',active); group('ARCHIVED',archived);
@@ -566,17 +599,102 @@ function ttSwitch(id){
   setTimeout(()=>ttCenterOnTerritory(t),250);
   banner('TERRITORY: '+t.name); setTimeout(()=>banner(''),1600);
 }
+function ttShowNewForm(){
+  $('tmNewForm').style.display='block';
+  $('tmNewName').focus();
+  $('tmNewStatus').textContent='';
+}
+function ttHideNewForm(){
+  $('tmNewForm').style.display='none';
+  $('tmNewName').value='';
+  $('tmNewAddress').value='';
+  $('tmNewStatus').textContent='';
+}
+async function ttCreateTerritoryFromForm(){
+  const name=$('tmNewName').value.trim();
+  const address=$('tmNewAddress').value.trim();
+  if(!name){$('tmNewStatus').textContent='Enter a territory name.';return;}
+  if(!address){$('tmNewStatus').textContent='Enter a starting address.';return;}
+
+  const status=$('tmNewStatus');
+  const btn=$('tmLocateNew');
+  btn.disabled=true; status.textContent='Locating address…';
+
+  try{
+    const u='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q='+encodeURIComponent(address);
+    const r=await fetch(u,{headers:{'Accept':'application/json'}});
+    if(!r.ok)throw Error('Geocoding request failed');
+    const hits=await r.json();
+    if(!hits?.length)throw Error('Address not found');
+
+    const lat=Number(hits[0].lat), lng=Number(hits[0].lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng))throw Error('Invalid location');
+
+    ttSaveCurrent();
+    const t={
+      id:ttNewId(),name,archived:false,territory:[],dnw:[],dnwNames:[],records:{},
+      startPoint:{lat,lng,address:hits[0].display_name||address},
+      updatedAt:new Date().toISOString()
+    };
+    territoryRegistry.push(t);
+    currentTerritoryId=t.id;
+    localStorage.setItem(TT_CURRENT_KEY,t.id);
+    ttSaveRegistry();
+    ttLoadRecord(t);
+
+    // New territories always begin with houses visible. This keeps the
+    // button state and the actual map state synchronized.
+    housesVisible=true;
+    remainingOnly=false;
+    updateHouseButton();
+    ttRebuildMap();
+    ttHideNewForm();
+    ttHideManager();
+
+    map.setView([lat,lng],17,{animate:false});
+    setTimeout(()=>ttCenterOnTerritory(t),80);
+    setTimeout(()=>ttCenterOnTerritory(t),300);
+    $('editTerritory').click();
+  }catch(e){
+    status.textContent='Could not locate that address. Try a more complete address.';
+  }finally{
+    btn.disabled=false;
+  }
+}
 function ttNewTerritory(){
-  ttSaveCurrent();
-  const name=(prompt('Name for the new territory:')||'').trim(); if(!name)return;
-  const t={id:ttNewId(),name,archived:false,territory:[],dnw:[],dnwNames:[],records:{},updatedAt:new Date().toISOString()};
-  territoryRegistry.push(t); currentTerritoryId=t.id; localStorage.setItem(TT_CURRENT_KEY,t.id);
-  ttSaveRegistry(); ttLoadRecord(t); ttRebuildMap(); ttHideManager(); $('editTerritory').click();
+  ttShowNewForm();
 }
 function ttRename(){
   const t=ttCurrent(); if(!t)return;
   const name=(prompt('New territory name:',t.name)||'').trim(); if(!name)return;
   t.name=name; ttSaveCurrent(); $('currentTerritoryName').textContent=name; ttRenderManager();
+}
+function ttDelete(id){
+  const t=territoryRegistry.find(x=>x.id===id); if(!t)return;
+  const activeCount=territoryRegistry.filter(x=>!x.archived).length;
+  if(!t.archived && activeCount<=1){
+    alert('Keep at least one active territory.');
+    return;
+  }
+  if(!confirm(`Delete "${t.name}"? This permanently removes this territory and its local map data. This cannot be undone.`))return;
+
+  const wasCurrent=(id===currentTerritoryId);
+  territoryRegistry=territoryRegistry.filter(x=>x.id!==id);
+  ttSaveRegistry();
+
+  if(wasCurrent){
+    const next=territoryRegistry.find(x=>!x.archived)||territoryRegistry[0];
+    if(next){
+      currentTerritoryId=next.id;
+      localStorage.setItem(TT_CURRENT_KEY,currentTerritoryId);
+      ttLoadRecord(next);
+      ttRebuildMap();
+      setTimeout(()=>ttCenterOnTerritory(next),50);
+      setTimeout(()=>ttCenterOnTerritory(next),250);
+      $('currentTerritoryName').textContent=next.name;
+    }
+  }
+  ttRenderManager();
 }
 function ttArchive(){
   const t=ttCurrent(); if(!t)return;
@@ -605,6 +723,8 @@ ttLoadRegistry();
 $('territories').addEventListener('click',ttShowManager);
 $('tmClose').addEventListener('click',ttHideManager);
 $('tmNew').addEventListener('click',ttNewTerritory);
+$('tmLocateNew').addEventListener('click',ttCreateTerritoryFromForm);
+$('tmCancelNew').addEventListener('click',ttHideNewForm);
 $('tmRename').addEventListener('click',ttRename);
 $('tmArchive').addEventListener('click',ttArchive);
 $('tmImport').addEventListener('click',()=>$('tmImportFile').click());
@@ -652,7 +772,10 @@ async function syncConnect(){
 async function syncHandlePasswordRecovery(){
   if(!syncClient)return;
   const {data:{session}}=await syncClient.auth.getSession();
-  if(!session)return;
+  if(!session){
+    setTimeout(()=>syncHandlePasswordRecovery(),500);
+    return;
+  }
   const newPassword=window.prompt('Password reset: enter your new Supabase password.');
   if(!newPassword)return;
   if(newPassword.length<6){
@@ -801,10 +924,22 @@ $('syncLoad').addEventListener('click',syncLoadCloud);
 
 if(syncUrl&&syncKey){
   // Reconnect silently; authentication session is persisted by supabase-js.
+  // Register the auth listener immediately so PASSWORD_RECOVERY is not missed
+  // when Supabase redirects back to the GitHub Pages app.
   try{
     syncClient=window.supabase.createClient(syncUrl,syncKey,{
       auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
     });
+    syncWatchAuthEvents();
+    setTimeout(async()=>{
+      try{
+        const {data:{session}}=await syncClient.auth.getSession();
+        if(session){
+          syncUser=session.user;
+          $('syncActions').style.display='block';
+        }
+      }catch(e){console.warn('Supabase session check failed',e)}
+    },300);
   }catch(e){console.warn('Supabase reconnect failed',e)}
 }
 
